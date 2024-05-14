@@ -9,7 +9,7 @@ functions are used to build the args for `get_get_trainer_config_fn`, including 
 
 See c4_trainer.py for how they are used.
 """
-
+import logging
 import math
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
@@ -503,6 +503,7 @@ def get_trainer_config_fn(
     """
 
     def config_fn() -> InstantiableConfig:
+        #logging.info(f"Ethan debug config_fn for {model_cfg}")
         cfg = SpmdTrainer.default_config()
         cfg.name = "gpt_trainer"
         cfg.model = model_cfg

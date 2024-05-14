@@ -76,13 +76,13 @@ dev = [
 gcp = [
     "cloud-tpu-client",  # for creating and managing TPUs.
     "crcmod",  # for file uploads.
-    "google-api-core==2.17.1",
-    "google-api-python-client==2.109.0",
-    "google-auth==2.23.0",
+    "google-api-core",
+    "google-api-python-client",
+    "google-auth",
     "google-auth[pyopenssl]",  # Ensures that we have compatible pyopenssl/cryptography pins.
     "pyOpenSSL>=22.1.0",  # compat with cryptography version.
-    "google-cloud-storage==2.11.0",
-    "google-cloud-core==2.3.3",
+    "google-cloud-storage",
+    "google-cloud-core",
 ]
 # For TPU training.
 # Note: Specify -f https://storage.googleapis.com/jax-releases/libtpu_releases.html during install.
@@ -102,7 +102,7 @@ vertexai_tensorboard = [
 ]
 # Dataflow dependencies.
 dataflow = [
-    "apache-beam==2.52.0",
+    "apache-beam==2.56.0",
     "apache-beam[gcp]",
     "google-apitools",  # for beam pipeline
     "orjson==3.9.10",

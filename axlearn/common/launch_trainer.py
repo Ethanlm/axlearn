@@ -72,6 +72,7 @@ def get_trainer_config(
                 flag_values.config,
                 config_module=flag_values.config_module,
             )
+            logging.info(f"ethan debug first trainer_config_fn")
         except (ImportError, AttributeError, KeyError):
             logging.info(
                 "Did not find config '%s' or module '%s' -- will continue searching.",
@@ -86,7 +87,13 @@ def get_trainer_config(
             flag_values.config,
             config_module=f"axlearn.experiments.{flag_values.config_module}",
         )
+        logging.info(f"ethan debug second trainer_config_fn")
+        logging.info(f"ethan debug config_module: axlearn.experiments.{flag_values.config_module}")
+        logging.info(f"ethan debug config: {flag_values.config}")
+
+    logging.info(f"ethan debug trainer_config_fn: {trainer_config_fn}")
     trainer_config: SpmdTrainer.Config = trainer_config_fn()
+    #logging.info(f"ethan debug trainer_config: {trainer_config}")
     trainer_config.dir = trainer_config.dir or flag_values.trainer_dir
     if flag_values.mesh_selector is not None:
         select_mesh_config(trainer_config, mesh_selector=flag_values.mesh_selector)

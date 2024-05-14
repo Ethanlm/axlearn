@@ -77,6 +77,7 @@ import re
 import shlex
 import signal
 import subprocess
+import sys
 from typing import Any, Dict, List, Sequence, Tuple, cast
 
 from absl import app, flags, logging
@@ -175,6 +176,7 @@ class DataflowJob(GCPJob):
         )
         cfg.setup_command = f"{docker_setup_cmd} && {docker_auth_cmd} && {bundle_cmd}"
         cfg.command = f"{cfg.command} {dataflow_flags}"
+
         return cfg
 
     @classmethod
@@ -227,10 +229,15 @@ class DataflowJob(GCPJob):
         _stop_dataflow_job(project=cfg.project, zone=cfg.zone, job_name=cfg.name)
 
     def _execute(self):
+        logging.info("Ethan debug: job executing")
         cfg: DataflowJob.Config = self.config
         # Run the setup command locally, but the launch command via docker.
         # This is to ensure that the launch environment matches the worker environment.
         processor = platform.processor().lower()
+
+        logging.info(f"Ethan debug: DataflowJob config: {cfg}")
+        logging.info(f"Ethan debug: DataflowJob job processor: {processor}")
+
         if "arm" in processor:
             # Disable running from docker on Mac M1 chip due to qemu core dump bug.
             # https://github.com/docker/for-mac/issues/5342.
@@ -250,6 +257,7 @@ class DataflowJob(GCPJob):
         cmd = f"{cfg.setup_command} && {cmd}"
         cmd = f"bash -c {shlex.quote(cmd)}"
         logging.info("Executing in subprocess: %s", cmd)
+
         with subprocess.Popen(cmd, shell=True, text=True) as proc:
             # Attempt to cleanup the process when exiting.
             def sig_handler(sig: int, _):
@@ -375,6 +383,7 @@ def main(argv: Sequence[str], *, flag_values: flags.FlagValues = FLAGS):
             )
 
         job = cfg.instantiate()
+        logging.info(f"Ethan debug: Dataflow job: {job}")
         job.execute()
     elif action == "stop":
         job = DataflowJob.from_flags(flag_values, command="").instantiate()

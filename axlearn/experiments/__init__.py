@@ -15,6 +15,7 @@ def _load_trainer_configs(
 ) -> Dict[str, TrainerConfigFn]:
     try:
         module = import_module(config_module)
+        logging.info(f"Ethan Debug found module: {module}")
         return module.named_trainer_configs()
     except (ImportError, AttributeError):
         if not optional:
@@ -39,10 +40,15 @@ def get_named_trainer_config(config_name: str, *, config_module: str) -> Trainer
         KeyError: Error containing the message to show to the user.
     """
     config_map = _load_trainer_configs(config_module)
+    logging.info(f"ethan debug config_map: {config_map}")
     if callable(config_map):
+        logging.info(f"ethan debug callable config_map: {config_name}")
         return config_map(config_name)
 
     try:
+        res = config_map[config_name]
+        logging.info(f"ethan debug not callable config_map: {res.__class__}")
+        logging.info(f"ethan debug not callable config_map: {res}")
         return config_map[config_name]
     except KeyError as e:
         similar = similar_names(config_name, set(config_map.keys()))

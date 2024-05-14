@@ -36,7 +36,7 @@ python3 -m axlearn.common.launch_trainer_main \
   --trainer_dir=/tmp/test_trainer --data_dir=gs://axlearn-public/tensorflow_datasets \
   --jax_backend=gpu
 """
-
+import logging
 from typing import Dict
 
 from axlearn.common.config import InstantiableConfig, config_for_function
@@ -85,6 +85,7 @@ def named_trainer_configs() -> Dict[str, TrainerConfigFn]:
             weight=1.0,
         ),
     ]
+    #logging.info("ethan debug: named_trainer_configs")
     vocab_cfg = config_for_function(vocab).set(sentencepiece_model_name=_SENTENCEPIECE_MODEL_NAME)
     train_input_source = config_for_function(mixture_train_input_source).set(
         data_mixture_components=train_data_mixture_components,
@@ -96,6 +97,7 @@ def named_trainer_configs() -> Dict[str, TrainerConfigFn]:
     for model_size in fuji.MODEL_SIZES:
         config_name = make_config_name(arch=arch, model_size=model_size)
         kwargs = fuji.get_trainer_kwargs(model_size, vocab_size=vocab_size)
+        #logging.info(f"Ethan debug kwargs: {kwargs}")
         # pylint: disable-next=unexpected-keyword-arg,missing-kwoa
         config_map[config_name] = get_trainer_config_fn(
             train_input_source=train_input_source.clone(

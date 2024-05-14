@@ -42,9 +42,11 @@ import inspect
 import os.path
 import re
 import threading
+import time
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
 
+import cloudpickle
 import jax
 import numpy as np
 from absl import logging
@@ -549,7 +551,45 @@ class Module(Configurable):
         """
         if not re.fullmatch("^[a-z][a-z0-9_]*$", name):
             raise ValueError(f'Invalid child name "{name}"')
+
+        import inspect
+        import os
+
+        logging.info(f"ethan debug {type(child_config)}")
+        logging.info(f"ethan debug child_config class file {inspect.getfile(child_config.__class__)}")
+
         child_config = copy.deepcopy(child_config)
+
+        logging.info(f"ethan debug {type(child_config)}")
+        logging.info(f"ethan debug child_config class file {inspect.getfile(child_config.__class__)}")
+
+        logging.info(f"ethan debug Module.Config {Module.Config}")
+        logging.info(f"ethan debug inspect Module.Config:  {inspect.getfile(Module.Config)}")
+
+        logging.info(f"ethan debug isinstance: {isinstance(child_config, Module.Config)}")
+
+        logging.info(f"ethan debug inspect current: {os.path.dirname(os.path.realpath(__file__))}")
+
+        logging.info(f"ethan debug cloudpickle ")
+        cp_child_config = cloudpickle.dumps(child_config)
+
+        with open("/tmp/child_config.cloudpickle", "wb") as f:
+            logging.info(f"ethan debug write cloudpickle to /tmp/child_config.cloudpickle")
+            cloudpickle.dump(child_config, f)
+
+        logging.info(f"ethan debug cloudpickle cp_child_config: {cp_child_config}")
+
+        reload_child_config = cloudpickle.loads(cp_child_config)
+
+        logging.info(f"ethan debug isinstance on reload_child_config: {isinstance(reload_child_config, Module.Config)}")
+
+        logging.info(f"ethan debug clodupickle END ")
+
+
+        logging.info("ethan debug sleeping for 3hr")
+        time.sleep(60*60*3)
+        logging.info("ethan debug sleeping for 3hr")
+
         if not isinstance(child_config, Module.Config):
             raise TypeError(f"add_child expects a Module config, got {child_config}")
         if not isinstance(child_config.name, RequiredFieldValue) and child_config.name != name:

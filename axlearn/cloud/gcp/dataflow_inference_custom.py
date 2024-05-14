@@ -64,6 +64,8 @@ $ axlearn gcp dataflow start \
 
 
 import logging
+import sys
+import inspect
 import warnings
 from typing import Any, Dict, Optional, Sequence
 
@@ -73,20 +75,30 @@ from absl import app, flags
 from absl.flags import argparse_flags
 from apache_beam.ml.inference.base import ModelHandler, PredictionResult, RunInference
 from apache_beam.options.pipeline_options import PipelineOptions
+from apache_beam.internal import pickler as beam_pickler
 
 import axlearn.common.input_fake as input_fake
 import axlearn.common.launch_trainer as trainer_utils
 from axlearn.common.inference import InferenceRunner, MethodRunner
 from axlearn.common.utils import NestedTensor
 from axlearn.common.trainer import SpmdTrainer
+from axlearn.common.module import Module
+
+import cloudpickle
+#import dill as cloudpickle
+import dill
+
+from axlearn.experiments.text.gpt import fuji
 
 warnings.filterwarnings("ignore")
+
 
 class CustomModelHandler(ModelHandler[Dict, PredictionResult, Any]):
     """Defines how to load a model and run inference"""
     def __init__(self, trainer_config: SpmdTrainer.Config, trainer_dir):
         self.trainer_config = trainer_config
         self.trainer_dir = trainer_dir
+        logging.info(f"ethan debug __init__2nd check isinstance: {isinstance(trainer_config.model, Module.Config)}")
 
     def load_model(self) -> MethodRunner:
         """Loads a pre-trained model in the desired type (MethodRunner in this case).
@@ -98,10 +110,12 @@ class CustomModelHandler(ModelHandler[Dict, PredictionResult, Any]):
 
         # get InferenceRunner Config from Trainer Config and instantiate InferenceRunner
         logging.info(f"Load model, trainer config type:{type(self.trainer_config)}")
+        logging.info(f"ethan debug 2nd check isinstance: {isinstance(self.trainer_config.model, Module.Config)}")
         inference_runner_cfg = InferenceRunner.config_from_trainer(self.trainer_config)
         inference_runner_cfg.init_state_builder.set(dir=self.trainer_dir)
         logging.info(f"Load model, inference runner config model type:{type(inference_runner_cfg.model)}")
         logging.info(f"Load model, inference runner config type:{type(inference_runner_cfg)}")
+        logging.info(f"ethan debug 3rd check isinstance: {isinstance(inference_runner_cfg.model, Module.Config)}")
         inference_runner = InferenceRunner(cfg=inference_runner_cfg, parent=None)
 
         # create Method Runner only once
@@ -171,31 +185,94 @@ def parse_flags(argv):
 
 
 def main(args, save_main_session=True, pickler="cloudpickle"):
-    FLAGS = flags.FLAGS
+    #FLAGS = flags.FLAGS
+
+    #beam_pickler.set_library(beam_pickler.USE_CLOUDPICKLE)
 
     # The default pickler is dill and cannot pickle absl FlagValues. Use cloudpickle instead.
-    args.append(f"--pickle_library={pickler}")
-    if save_main_session:
-        args.append("--save_main_session")
+    #args.append(f"--pickle_library={pickler}")
+    #if save_main_session:
+    #    args.append("--save_main_session")
+    #args.append("--type_check_additional=all,ptransform_fn")
 
     # get pipeline input
-    pipeline_input = get_examples()
+    #pipeline_input = get_examples()
 
     # run pipeline
-    pipeline_options = PipelineOptions(args)
+    #pipeline_options = PipelineOptions(args)
 
-    pipeline = beam.Pipeline(options=pipeline_options)
+    #pipeline = beam.Pipeline(options=pipeline_options)
 
-    module_config = trainer_utils.get_trainer_config(flag_values=FLAGS)
-    logging.info(f"Main module config type:{type(module_config)}")
+    #module_config = trainer_utils.get_trainer_config(flag_values=FLAGS)
+    module_config = trainer_utils.get_trainer_config()
+    #logging.info(f"Main module config type:{type(module_config)}")
+    #logging.info(f"Main module config mode type:{type(module_config.model)}")
+    #logging.info(f"ethan debug 1st check isinstance: {isinstance(module_config.model, Module.Config)}")
 
-    with pipeline as p:
-        (
-            p
-            | "CreateInput" >> beam.Create(pipeline_input)
-            | "RunInference" >> RunInference(CustomModelHandler(trainer_config=module_config, trainer_dir=FLAGS.trainer_dir))
-            | "PrintOutput" >> beam.Map(print)
-        )
+    #dill.detect.badobjects(module_config.model, 1)
+
+    #cp_child_config = cloudpickle.dumps(module_config.model)
+
+    #reload_child_config = cloudpickle.loads(cp_child_config)
+    #logging.info(f"ethan debug check isinstance LOCAL reloaded cp_child_config: {isinstance(reload_child_config, Module.Config)}")
+
+    trainer_kwargs = fuji.get_trainer_kwargs("7B", vocab_size=0)
+
+    # model.decoder.transformer.layer.remat_spec['policy'].fn: 'jax._src.ad_checkpoint.save_only_these_names'
+    origin_obj = trainer_kwargs["model_cfg"].decoder.transformer.layer.remat_spec.policy#.fn
+
+    #logging.info(f"ethan debug print origin_obj: {origin_obj}")
+    logging.info(f"ethan debug print orin_job pickleable: {dill.pickles(origin_obj)}")
+
+    #dill.detect.badobjects(origin_obj)
+
+    #sys.exit(0)
+
+    reloaded_obj = cloudpickle.loads(cloudpickle.dumps(origin_obj))
+    logging.info(f"ethan debug print orin_job class: {origin_obj.__class__}")
+    logging.info(f"ethan debug print orin_job filepath: {inspect.getfile(origin_obj.__class__)}")
+
+    logging.info(f"ethan debug print orin_job: {id(origin_obj.__class__)}")
+    logging.info(f"ethan debug print reloaded_obj: {id(reloaded_obj.__class__)}")
+    logging.info(f"ethan debug print reloaded_obj filepath: {inspect.getfile(reloaded_obj.__class__)}")
+
+    #logging.info(f"ethan debug reloaded {id(reloaded_obj.__class__)}: {id(reloaded_obj.__class__)==id(origin_obj.__class__)}")
+
+
+    #for k, v in reloaded_obj.items():
+    #    try:
+    #        logging.info(f"Compare {k}")
+    #        logging.info(f"ethan debug reloaded {id(v.__class__)}: {id(v.__class__)==id(origin_obj[k].__class__)}")
+    #    except Exception as e:
+    #        logging.info(f"ethan skipping {e}")
+
+    picked_file = "/tmp/child_config.cloudpickle"
+
+    logging.info(f"ethan debug check origin_job: {id(origin_obj.__class__)}")
+
+    with open(picked_file, "rb") as f:
+        try:
+            reload_from_file = cloudpickle.load(f)
+            logging.info(f"ethan debug check RELOAD-LOCAL-prev-FILE: {id(reload_from_file.__class__)}")
+            logging.info(f"ethan debug check RELOAD-LOCAL-prev-FILE EQUAL?: {id(reload_from_file.__class__) == id(origin_obj.__class__)}")
+        except Exception as e:
+            logging.info(f"EXP SKIP: {e}")
+
+    with open(picked_file, "wb") as f:
+        logging.info(f"ethan debug write cloudpickle to {picked_file}")
+        cloudpickle.dump(origin_obj, f)
+
+    with open(picked_file, "rb") as f:
+        reload_from_file= cloudpickle.load(f)
+        logging.info(f"ethan debug check RELOAD-LOCAL-FILE: {id(reload_from_file.__class__)}")
+
+    #with pipeline as p:
+    #    (
+    #        p
+    #        | "CreateInput" >> beam.Create(pipeline_input)
+    #        | "RunInference" >> RunInference(CustomModelHandler(trainer_config=module_config, trainer_dir=FLAGS.trainer_dir))
+    #        | "PrintOutput" >> beam.Map(print)
+    #    )
 
 
 if __name__ == "__main__":

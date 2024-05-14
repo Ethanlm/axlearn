@@ -764,8 +764,8 @@ def config_for_function(fn: Callable[..., T]) -> Union[Any, FunctionConfigBase[T
 
     Args:
         fn: The function to wrap.
-
-    Returns:
+GggQQ
+    RQeturns:
         A Config that when instantiated, invokes `fn` based on any config fields that have been set.
     """
     fn_sig = inspect.signature(fn)
